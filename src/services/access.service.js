@@ -3,6 +3,11 @@
 const shopModel = require("../models/shop.model");
 const bcrypt = require("bcrypt");
 const crypto = require("crypto");
+const { createTokenPair } = require("../auth/authUtils");
+const { getInfoData } = require("../utils");
+const { BadRequestError } = require("../core/error.response");
+const { Created } = require("../core/success.response");
+const { findByEmail } = require("./shop.service");
 const SALT_ROUNDS = 10;
 
 const RoleShop = {
@@ -14,53 +19,79 @@ const RoleShop = {
 
 class AccessService {
   static signUp = async ({ name, email, password }) => {
-    try {
-      console.log("Go here");
-      // step1 : check email exists??
-      // lean query nhanh -> return pure short object js
-      const holderShop = await shopModel.findOne({ email }).lean();
-      console.log({ holderShop });
-      if (holderShop) {
-        return {
-          code: "xxx",
-          message: "Shop already registered",
-          status: "error",
-        };
-      }
+    // step1 : check email exists??
+    // lean query nhanh -> return pure short object js
+    const holderShop = await shopModel.findOne({ email }).lean();
+    if (holderShop) {
+      throw new BadRequestError("Shop is already exists");
+    }
 
-      const hashedPassword = await bcrypt.hash(password, SALT_ROUNDS);
-      console.log("HERRE", {
-        name,
-        email,
-        hashedPassword,
-        roles: RoleShop.SHOP,
+    const hashedPassword = await bcrypt.hash(password, SALT_ROUNDS);
+    const newShop = await shopModel.create({
+      name,
+      email,
+      password: hashedPassword,
+      roles: RoleShop.SHOP,
+    });
+    if (newShop) {
+      //create privateKey, PublicKey
+      const { privateKey, publicKey } = crypto.generateKeyPairSync("rsa", {
+        modulusLength: 2048,
+        publicKeyEncoding: { type: "spki", format: "pem" },
+        privateKeyEncoding: { type: "pkcs8", format: "pem" },
       });
 
-      const newShop = await shopModel.create({
-        name,
-        email,
-        hashedPassword,
-        roles: RoleShop.SHOP,
-      });
-      console.log("Hhhhhhhhhhh");
-      console.log("NEWW SHOP", newShop);
-      if (newShop) {
-        //create privateKey, PublicKey
-        const { privateKey, publicKey } = crypto.generateKeyPairSync("rsa", {
-          modulusLength: 2048,
-          publicKeyEncoding: { type: "spki", format: "pem" },
-          privateKeyEncoding: { type: "pkcs8", format: "pem" },
-        });
-        console.log({ privateKey, publicKey }); //save collection KEYSTORE
-      }
-    } catch (error) {
+      const { accessToken, refreshToken } = await createTokenPair(
+        { userId: newShop._id },
+        publicKey,
+        privateKey
+      );
+
       return {
-        code: "xxx",
-        message: error.message,
-        status: "error",
+        code: "20001",
+        metadata: {
+          shop: getInfoData({
+            fields: ["_id", "name", "email"],
+            object: newShop,
+          }),
+          accessToken,
+          refreshToken,
+        },
       };
     }
   };
+
+  static Login = async ({ email, password }) => {
+    const foundShop = await findByEmail(email);
+    if (!foundShop) {
+      throw new BadRequestError("Email or password is incorrect");
+    }
+
+    const isMatch = await bcrypt.compare(password, foundShop.password);
+    if (!isMatch) {
+      throw new BadRequestError("Authentication Error");
+    }
+
+    const { privateKey, publicKey } = crypto.generateKeyPairSync("rsa", {
+      modulusLength: 2048,
+      publicKeyEncoding: { type: "spki", format: "pem" },
+      privateKeyEncoding: { type: "pkcs8", format: "pem" },
+    });
+
+    const { accessToken, refreshToken } = await createTokenPair(
+      { userId: foundShop._id },
+      publicKey,
+      privateKey
+    );
+
+    return {
+        shop: getInfoData({
+          fields: ["_id", "name", "email"],
+          object: foundShop,
+        }),
+        accessToken,
+        refreshToken,
+    };
 }
 
 module.exports = AccessService;

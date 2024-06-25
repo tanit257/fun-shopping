@@ -20,18 +20,35 @@ app.use(bodyParser.json());
 // app.use(morgan('tiny'));
 // app.use(morgan('short'));
 // app.use(morgan('common'));
-require("./dbs/init.mongodb");
 
 // Check conection interval db
 // const {checkOverload} = require('./helpers/check-connect')
 // checkOverload()
 
 //init db
+require("./dbs/init.mongodb");
 
 //init route
 
 app.use("/", require("./routers/index"));
 
 //handle errors
+
+app.use((req, res, next) => {
+  const error = new Error("Not Found");
+  error.statusCode = 404;
+  next(error);
+  // console.log('MUST HERE')
+  // next( new NotFoundError());
+});
+
+app.use((err, req, res, next) => {
+  const statusCode = err.statusCode || 500;
+  return res.status(statusCode).json({
+    status: "error",
+    statusCode,
+    message: err.message || "Internal Server Error",
+  });
+});
 
 module.exports = app;

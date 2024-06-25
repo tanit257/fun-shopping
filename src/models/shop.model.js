@@ -9,7 +9,6 @@ var shopSchema = new mongoose.Schema(
     name: {
       type: String,
       required: true,
-      unique: true,
       index: true,
     },
     email: {
@@ -20,7 +19,6 @@ var shopSchema = new mongoose.Schema(
     password: {
       type: String,
       required: true,
-      unique: true,
     },
     status: {
       type: String,
@@ -29,8 +27,8 @@ var shopSchema = new mongoose.Schema(
     },
     verify: {
       type: Schema.Types.Boolean,
-      required: true,
-      unique: true,
+      default: false,
+      unique: false,
     },
     roles: {
       type: Array,
