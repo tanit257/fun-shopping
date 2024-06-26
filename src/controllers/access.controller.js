@@ -15,6 +15,13 @@ class AccessController {
     const successRequest = new OK("Login Success!", loginResult);
     successRequest.send(res);
   }
+
+  logout = async (req, res, next) => {
+    const delKey = await AccessService.logout(req.KeyStore);
+    console.log({delKey})
+    new OK("Logout Success!", req.keyStore).send(res);
+  }
+
 }
 
 module.exports = new AccessController();

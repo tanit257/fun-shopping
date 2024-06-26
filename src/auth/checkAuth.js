@@ -4,10 +4,7 @@ const { permission } = require("process");
 const { findById } = require("../services/apiKey.service");
 const { ForbiddenError } = require("../core/error.response");
 
-const HEADER = {
-  API_KEY: "x-api-key",
-  AUTHORIZATION: "authorization",
-};
+const HEADER = require("../auth/authUtils");
 
 const apiKey = async (req, res, next) => {
   const key = req.headers[HEADER.API_KEY]?.toString();
@@ -37,10 +34,4 @@ const checkPermission = (permission) => {
   };
 };
 
-const asyncHandler = (fn) => {
-  return (req, res, next) => {
-    fn(req, res, next).catch(next);
-  };
-};
-
-module.exports = { apiKey, checkPermission, asyncHandler };
+module.exports = { apiKey, checkPermission };

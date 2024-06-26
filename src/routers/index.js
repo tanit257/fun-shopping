@@ -1,7 +1,7 @@
 "use strict";
 
 const express = require("express");
-const { apiKey, checkPermission, asyncHandler } = require("../auth/checkAuth");
+const { apiKey, checkPermission } = require("../auth/checkAuth");
 const { NotFoundError } = require("../core/error.response");
 
 const router = express.Router();
