@@ -7,7 +7,7 @@ const { NotFoundError } = require("../core/error.response");
 const router = express.Router();
 
 //check apiKey
-router.use(asyncHandler(apiKey));
+// router.use(asyncHandler(apiKey));
 //check Permission
 
 // router.use(asyncHandler(checkPermission("WRITE")));

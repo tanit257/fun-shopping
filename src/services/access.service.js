@@ -6,8 +6,8 @@ const crypto = require("crypto");
 const { createTokenPair } = require("../auth/authUtils");
 const { getInfoData } = require("../utils");
 const { BadRequestError } = require("../core/error.response");
-const { Created } = require("../core/success.response");
 const { findByEmail } = require("./shop.service");
+const KeyTokenService = require("./keyToken.service");
 const SALT_ROUNDS = 10;
 
 const RoleShop = {
@@ -48,20 +48,17 @@ class AccessService {
       );
 
       return {
-        code: "20001",
-        metadata: {
-          shop: getInfoData({
-            fields: ["_id", "name", "email"],
-            object: newShop,
-          }),
-          accessToken,
-          refreshToken,
-        },
+        shop: getInfoData({
+          fields: ["_id", "name", "email"],
+          object: newShop,
+        }),
+        accessToken,
+        refreshToken,
       };
     }
   };
 
-  static Login = async ({ email, password }) => {
+  static login = async ({ email, password }) => {
     const foundShop = await findByEmail(email);
     if (!foundShop) {
       throw new BadRequestError("Email or password is incorrect");
@@ -84,14 +81,22 @@ class AccessService {
       privateKey
     );
 
+    await KeyTokenService.createKeyToken({
+      userId: foundShop._id,
+      publicKey,
+      privateKey,
+      refreshToken,
+    });
+
     return {
-        shop: getInfoData({
-          fields: ["_id", "name", "email"],
-          object: foundShop,
-        }),
-        accessToken,
-        refreshToken,
+      shop: getInfoData({
+        fields: ["_id", "name", "email"],
+        object: foundShop,
+      }),
+      accessToken,
+      refreshToken,
     };
+  };
 }
 
 module.exports = AccessService;

@@ -25,7 +25,10 @@ const keyTokenSchema = new mongoose.Schema(
       required: true,
       default: [],
     },
-    ref,
+    refreshToken: {
+      type: String,
+      required: true,
+    },
   },
   { timestamps: true, collection: COLLECTION_NAME }
 );
