@@ -5,10 +5,11 @@ const bcrypt = require("bcrypt");
 const crypto = require("crypto");
 const { createTokenPair } = require("../auth/authUtils");
 const { getInfoData } = require("../utils");
-const { BadRequestError } = require("../core/error.response");
+const { BadRequestError, AuthFailureError } = require("../core/error.response");
 const { findByEmail } = require("./shop.service");
 const KeyTokenService = require("./keyToken.service");
 const SALT_ROUNDS = 10;
+const JWT = require("jsonwebtoken");
 
 const RoleShop = {
   SHOP: "SHOP",
@@ -81,7 +82,7 @@ class AccessService {
       privateKey
     );
 
-    await KeyTokenService.createKeyToken({
+    await KeyTokenService.createOrUpdateOneKeyToken({
       userId: foundShop._id,
       publicKey,
       privateKey,
@@ -98,10 +99,64 @@ class AccessService {
     };
   };
 
-  static logout = async ( keyStore ) => {
+  static logout = async (keyStore) => {
     const delKey = await KeyTokenService.removeKeyById(keyStore._id);
-    return delKey
-  }
+    return delKey;
+  };
+
+  static refreshToken = async ({ refreshToken }, clientId) => {
+    if (!clientId) {
+      throw new BadRequestError("Not found Client Id");
+    }
+    const keyStore = await KeyTokenService.findByUserId(clientId);
+    if (!keyStore) {
+      throw new BadRequestError("RefreshToken is not found");
+    }
+    try {
+      JWT.verify(refreshToken, keyStore.publicKey, { algorithms: ["RS256"] });
+    } catch (err) {
+      console.log(err);
+      throw new AuthFailureError("RefreshToken is invalid");
+    }
+    const { refreshTokenUsed } = keyStore;
+
+    if (refreshTokenUsed.includes(refreshToken)) {
+      await KeyTokenService.removeKeyById(keyStore._id);
+      throw new BadRequestError(
+        "We found your refreshToken is used by another person."
+      );
+      //remove token
+    }
+    const newRefreshTokenUsed = [...refreshTokenUsed, refreshToken];
+
+    const { privateKey: newPrivateKey, publicKey: newPublicKey } =
+      crypto.generateKeyPairSync("rsa", {
+        modulusLength: 2048,
+        publicKeyEncoding: { type: "spki", format: "pem" },
+        privateKeyEncoding: { type: "pkcs8", format: "pem" },
+      });
+
+    const { accessToken: newAccessToken, refreshToken: newRefreshToken } =
+      await createTokenPair(
+        { userId: keyStore.user },
+        newPublicKey,
+        newPrivateKey
+      );
+
+    await KeyTokenService.updateOneKeyToken({
+      userId: keyStore.user,
+      newPublicKey,
+      newPrivateKey,
+      accessToken: newAccessToken,
+      refreshToken: newRefreshToken,
+      refreshTokenUsed: newRefreshTokenUsed,
+    });
+
+    return {
+      newAccessToken,
+      newRefreshToken,
+    };
+  };
 }
 
 module.exports = AccessService;

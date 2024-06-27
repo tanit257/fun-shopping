@@ -4,7 +4,7 @@ const { permission } = require("process");
 const { findById } = require("../services/apiKey.service");
 const { ForbiddenError } = require("../core/error.response");
 
-const HEADER = require("../auth/authUtils");
+const { HEADER } = require("../auth/authUtils");
 
 const apiKey = async (req, res, next) => {
   const key = req.headers[HEADER.API_KEY]?.toString();
@@ -16,6 +16,16 @@ const apiKey = async (req, res, next) => {
     throw new ForbiddenError();
   }
   req.objKey = objKey;
+  return next();
+};
+
+const clientId = async (req, res, next) => {
+  const clientId = req.headers[HEADER.CLIENT_ID]?.toString()
+    ? req.headers[HEADER.CLIENT_ID]?.toString()
+    : null;
+  req.clientId = clientId;
+  console.log("Qua day rooi", req.clientId);
+
   return next();
 };
 
@@ -34,4 +44,4 @@ const checkPermission = (permission) => {
   };
 };
 
-module.exports = { apiKey, checkPermission };
+module.exports = { apiKey, checkPermission, clientId };

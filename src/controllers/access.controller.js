@@ -14,14 +14,21 @@ class AccessController {
     const loginResult = await AccessService.login(req.body);
     const successRequest = new OK("Login Success!", loginResult);
     successRequest.send(res);
-  }
+  };
 
   logout = async (req, res, next) => {
     const delKey = await AccessService.logout(req.KeyStore);
-    console.log({delKey})
-    new OK("Logout Success!", req.keyStore).send(res);
-  }
+    new OK("Logout Success!", req.KeyStore).send(res);
+  };
+  refreshToken = async (req, res, next) => {
+    const newTokens = await AccessService.refreshToken(req.body, req.clientId);
+    console.log({ newTokens });
+    new OK("Refresh Token Success!", newTokens).send(res);
+  };
 
+  getList = async (req, res, next) => {
+    const listShop = ["Shop 1", "Shop 2"];
+    new OK("Get List Shop Success!", listShop).send(res);
+  };
 }
-
 module.exports = new AccessController();

@@ -14,7 +14,7 @@ const HEADER = {
 const createTokenPair = async (payload, publicKey, privateKey) => {
   try {
     const accessToken = await JWT.sign(payload, privateKey, {
-      expiresIn: "1 days",
+      expiresIn: "30 seconds",
       algorithm: "RS256",
     });
 
@@ -41,29 +41,30 @@ const createTokenPair = async (payload, publicKey, privateKey) => {
     };
   }
 };
-const authentication =  async (req, res, next) => {
-    const userId = req.headers[HEADER.CLIENT_ID];
-    if(!userId) throw new AuthFailureError("Invalid Request")
 
-    const keyStore = await KeyTokenService.findByUserId(userId);
+const authentication = async (req, res, next) => {
+  const userId = req.headers[HEADER.CLIENT_ID];
+  if (!userId) throw new AuthFailureError("Invalid Request");
 
-    if(!keyStore) throw new NotFoundError("Not Found Key Token")
+  const keyStore = await KeyTokenService.findByUserId(userId);
 
-    const accessToken = req.headers[HEADER.AUTHORIZATION];
+  if (!keyStore) throw new NotFoundError("Not Found Key Token");
 
-    try{
-      const decodeToken = JWT.verify(accessToken, keyStore.publicKey)
-      if (userId !== decodeToken.userId) throw new AuthFailureError("Invalid Token")
-      req.KeyStore = keyStore; 
-      return next();
+  const accessToken = req.headers[HEADER.AUTHORIZATION];
+
+  try {
+    const decodeToken = JWT.verify(accessToken, keyStore.publicKey);
+    if (userId !== decodeToken.userId)
+      throw new AuthFailureError("Invalid Token");
+    req.KeyStore = keyStore;
+    return next();
+  } catch (err) {
+    console.log(err);
+    if (err.name === "TokenExpiredError") {
+      throw new AuthFailureError("Token Expired");
     }
-    catch(err) {
-      if(err.name === "TokenExpiredError") {
-        throw new AuthFailureError("Token Expired")
-      }
-      throw new AuthFailureError("Invalid Token")
-    }
+    throw new AuthFailureError("Invalid Token");
+  }
 };
-
 
 module.exports = { createTokenPair, authentication, HEADER };
