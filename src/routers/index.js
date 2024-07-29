@@ -15,6 +15,8 @@ router.use(clientId);
 // router.use(asyncHandler(checkPermission("WRITE")));
 
 router.use("/v1/api", require("./access"));
+
+router.use("/v1/api", require("./product"));
 // router.get('', (req, res) => {
 //     const strCompress = 'Hello World';
 //     res.status(200).json({message:'Hello from server side', app:'Natours',metadata: strCompress.repeat(10000)});
