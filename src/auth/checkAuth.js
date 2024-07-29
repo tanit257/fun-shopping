@@ -24,8 +24,6 @@ const clientId = async (req, res, next) => {
     ? req.headers[HEADER.CLIENT_ID]?.toString()
     : null;
   req.clientId = clientId;
-  console.log("Qua day rooi", req.clientId);
-
   return next();
 };
 

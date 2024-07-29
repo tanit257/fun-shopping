@@ -17,13 +17,19 @@ class AccessController {
   };
 
   logout = async (req, res, next) => {
-    const delKey = await AccessService.logout(req.KeyStore);
-    new OK("Logout Success!", req.KeyStore).send(res);
+    const delKey = await AccessService.logout(req.keyStore);
+    new OK("Logout Success!", req.keyStore).send(res);
   };
+
   refreshToken = async (req, res, next) => {
-    const newTokens = await AccessService.refreshToken(req.body, req.clientId);
-    console.log({ newTokens });
-    new OK("Refresh Token Success!", newTokens).send(res);
+    new OK(
+      "Refresh Token Success!",
+      await AccessService.refreshToken({
+        refreshToken: req.refreshToken,
+        userId: req.userId,
+        keyStore: req.keyStore,
+      })
+    ).send(res);
   };
 
   getList = async (req, res, next) => {
@@ -31,4 +37,5 @@ class AccessController {
     new OK("Get List Shop Success!", listShop).send(res);
   };
 }
+
 module.exports = new AccessController();

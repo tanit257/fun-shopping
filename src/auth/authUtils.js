@@ -1,48 +1,29 @@
 "use strict";
 
 const JWT = require("jsonwebtoken");
-const { asyncHandler } = require("../helpers/asyncHandler");
 const { AuthFailureError, NotFoundError } = require("../core/error.response");
-const { findByUserId } = require("../services/keyToken.service");
 const KeyTokenService = require("../services/keyToken.service");
 const HEADER = {
   API_KEY: "x-api-key",
   AUTHORIZATION: "authorization",
   CLIENT_ID: "client-id",
+  REFRESH_TOKEN: "refresh-token",
 };
 
-const createTokenPair = async (payload, publicKey, privateKey) => {
-  try {
-    const accessToken = await JWT.sign(payload, privateKey, {
-      expiresIn: "30 seconds",
-      algorithm: "RS256",
-    });
+const createTokenPair = async (payload, secretKey) => {
+  const accessToken = await JWT.sign(payload, secretKey, {
+    expiresIn: "60 minutes",
+    algorithm: "RS256",
+  });
 
-    const refreshToken = await JWT.sign(payload, privateKey, {
-      expiresIn: "30 days",
-      algorithm: "RS256",
-    });
-
-    JWT.verify(accessToken, publicKey, (err, decoded) => {
-      if (err) {
-        console.log("err", err);
-      } else {
-        console.log("decode verified", decoded);
-      }
-    });
-
-    return { accessToken, refreshToken };
-  } catch (error) {
-    console.log(error);
-    return {
-      code: "xxx",
-      message: error.message,
-      status: "error",
-    };
-  }
+  const refreshToken = await JWT.sign(payload, secretKey, {
+    expiresIn: "30 days",
+    algorithm: "RS256",
+  });
+  return { accessToken, refreshToken };
 };
 
-const authentication = async (req, res, next) => {
+const authRefreshToken = async (req, res, next) => {
   const userId = req.headers[HEADER.CLIENT_ID];
   if (!userId) throw new AuthFailureError("Invalid Request");
 
@@ -50,13 +31,16 @@ const authentication = async (req, res, next) => {
 
   if (!keyStore) throw new NotFoundError("Not Found Key Token");
 
-  const accessToken = req.headers[HEADER.AUTHORIZATION];
+  const refreshToken = req.headers[HEADER.REFRESH_TOKEN];
 
+  if (!refreshToken) throw new AuthFailureError("Invalid Request");
   try {
-    const decodeToken = JWT.verify(accessToken, keyStore.publicKey);
+    const decodeToken = JWT.verify(refreshToken, keyStore.publicKey);
     if (userId !== decodeToken.userId)
       throw new AuthFailureError("Invalid Token");
-    req.KeyStore = keyStore;
+    req.keyStore = keyStore;
+    req.userId = decodeToken.userId;
+    req.refreshToken = refreshToken;
     return next();
   } catch (err) {
     console.log(err);
@@ -67,4 +51,36 @@ const authentication = async (req, res, next) => {
   }
 };
 
-module.exports = { createTokenPair, authentication, HEADER };
+const authentication = async (req, res, next) => {
+  const userId = req.clientId;
+  if (!userId) throw new AuthFailureError("Invalid Request");
+  const keyStore = await KeyTokenService.findByUserId(userId);
+  if (!keyStore) throw new NotFoundError("Not Found Key Token");
+  const accessToken = req.headers[HEADER.AUTHORIZATION];
+
+  try {
+    const decodeToken = JWT.verify(accessToken, keyStore.privateKey);
+    if (userId !== decodeToken.userId)
+      throw new AuthFailureError("Invalid Token");
+    req.keyStore = keyStore;
+    return next();
+  } catch (err) {
+    console.log(err);
+    if (err.name === "TokenExpiredError") {
+      throw new AuthFailureError("Token Expired");
+    }
+    throw new AuthFailureError("Invalid Token");
+  }
+};
+
+const JwtVerify = async (jwtToken, secretKey) => {
+  return JWT.verify(jwtToken, secretKey);
+};
+
+module.exports = {
+  createTokenPair,
+  authentication,
+  authRefreshToken,
+  HEADER,
+  JwtVerify,
+};

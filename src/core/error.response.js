@@ -23,7 +23,6 @@ class BadRequestError extends ErrorResponse {
     message = ReasonStatusCode.BAD_REQUEST,
     statusCode = StatusCode.BAD_REQUEST
   ) {
-    console.log("====", message, statusCode);
     super(message, statusCode);
   }
 }
