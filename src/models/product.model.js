@@ -1,5 +1,6 @@
+const { min } = require("lodash");
 const { Schema, model } = require("mongoose");
-
+const slugify = require("slugify");
 const DOCUMENTNAME = "Product";
 const COLLECTION_NAME = "Products";
 
@@ -14,6 +15,10 @@ const productSchema = new Schema(
       required: true,
     },
     product_description: {
+      type: Schema.Types.String,
+    },
+    product_slug: {
+      // quan-dui-cao-cap
       type: Schema.Types.String,
     },
     product_thumbnail: {
@@ -33,9 +38,41 @@ const productSchema = new Schema(
       type: Schema.Types.Mixed,
       required: true,
     },
+    product_rating: {
+      type: Schema.Types.Number,
+      default: 4.5,
+      min: [1, "Rating must be at least 1"],
+      max: [5, "Rating must be at most 5"],
+      set: (value) => Math.round(value * 10) / 10,
+    },
+    product_variants: {
+      type: Schema.Types.Array,
+      default: [],
+    },
+    product_shop: {
+      type: { type: Schema.Types.ObjectId, ref: "Shop" },
+    },
+    isDraft: {
+      type: Schema.Types.Boolean,
+      default: true,
+      index: true,
+      select: false,
+    },
+    isPublished: {
+      type: Schema.Types.Boolean,
+      default: false,
+      index: true,
+      select: false,
+    },
   },
   { timestamps: true, collection: COLLECTION_NAME }
 );
+
+// Document Middleware
+productSchema.pre("save", function (next) {
+  this.product_slug = slugify(this.product_name, { lower: true });
+  next();
+});
 
 const clothingSchema = new Schema({
   brand: {
@@ -47,6 +84,11 @@ const clothingSchema = new Schema({
   },
   material: {
     type: Schema.Types.String,
+  },
+  product_shop: {
+    type: Schema.Types.ObjectId,
+    ref: "Shop",
+    required: true,
   },
 });
 
@@ -60,6 +102,11 @@ const electronicSchema = new Schema({
   },
   color: {
     type: Schema.Types.String,
+  },
+  product_shop: {
+    type: Schema.Types.ObjectId,
+    ref: "Shop",
+    required: true,
   },
 });
 

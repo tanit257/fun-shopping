@@ -63,6 +63,7 @@ const authentication = async (req, res, next) => {
     if (userId !== decodeToken.userId)
       throw new AuthFailureError("Invalid Token");
     req.keyStore = keyStore;
+    req.userId = userId;
     return next();
   } catch (err) {
     console.log(err);

@@ -5,7 +5,10 @@ class ProductController {
   async create(req, res) {
     new OK(
       "Create product success!",
-      await productService.createProduct(req.body.product_type, req.body)
+      await productService.createProduct(req.body.product_type, {
+        ...req.body,
+        product_shop: req.userId
+      })
     ).send(res);
   }
 }
